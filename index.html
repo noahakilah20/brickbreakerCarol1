@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Jogo da Aninha ❤️</title>
+  <style>
+    body { margin:0; overflow:hidden; font-family:Arial,sans-serif; background:#fff; }
+    #gameCanvas { display:block; margin:0 auto; border:2px solid #000; background:#fff; }
+    #info { position:absolute; top:10px; left:10px; background:rgba(255,255,255,0.8); padding:8px; border-radius:8px; font-weight:bold; }
+    #finalMsg { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); display:none; background:#ffc0cb; padding:20px; border-radius:12px; font-size:24px; font-weight:bold; box-shadow:0 0 10px #f0f; }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas" width="400" height="600"></canvas>
+  <div id="info">Pontuação: <span id="score">0</span> | Recorde: <span id="highScore">0</span></div>
+  <div id="finalMsg">❤️ Você é incrível, Aninha! ❤️</div>
+
+<script>
+const c = document.getElementById('gameCanvas');
+const ctx = c.getContext('2d');
+const scoreEl = document.getElementById('score');
+const highEl = document.getElementById('highScore');
+const finalDiv = document.getElementById('finalMsg');
+
+const bg = new Image();
+bg.src = 'https://harikacocuklarizmir.com/images/uploads/2dc834e1801c5d89034a2b8454d42ce8.jpg';
+
+let balls = [{ x:200, y:550, dx: 3, dy:-3, r:7 }];
+let paddleX = 160, score = 0, high = Number(localStorage.getItem('highAna')||0);
+highEl.textContent = high;
+
+const layout = [
+ '000001111110000',
+ '000111111111000',
+ '001111111111100',
+ '011111111111110',
+ '011111111111110',
+ '011111111111110',
+ '001111111111100',
+ '000111111111000',
+ '000011111110000',
+ '000001111100000',
+ '000000111000000',
+ '000000010000000'
+];
+const rows = layout.length, cols = layout[0].length;
+const bw=24, bh=20, pad=4, ot=40, ol=8;
+let bricks = [];
+for(let r=0;r<rows;r++){
+  bricks[r]=[];
+  for(let c2=0;c2<cols;c2++){
+    bricks[r][c2]={status: layout[r][c2]=='1'?1:0, x:0, y:0};
+  }
+}
+const total = bricks.flat().filter(b=>b.status).length;
+const praises = ["Você é um encanto!","Linda demais!","Sua luz ilumina!","Você arrasa!","Continue brilhando!"];
+
+c.addEventListener('mousemove', e=>{
+  let mx = e.clientX - c.getBoundingClientRect().left;
+  paddleX = Math.max(0, Math.min(mx-40, c.width-80));
+});
+
+function draw(){
+  ctx.clearRect(0,0,c.width,c.height);
+  ctx.drawImage(bg,0,0,c.width,c.height);
+
+  // bricks
+  bricks.flat().forEach(b=>{
+    if(b.status){
+      let r = bricks.indexOf(bricks.find(rw=>rw.includes(b)));
+      let c2 = bricks[r].indexOf(b);
+      b.x = ol + c2*(bw+pad);
+      b.y = ot + r*(bh+pad);
+      ctx.fillStyle='#f69'; ctx.fillRect(b.x,b.y,bw,bh);
+      ctx.fillStyle='#000'; ctx.font='14px Arial'; ctx.fillText('❤️',b.x+8,b.y+14);
+    }
+  });
+
+  // paddle
+  ctx.fillStyle='#87CEFA'; ctx.fillRect(paddleX, c.height-30, 80, 10);
+  ctx.strokeStyle='#000'; ctx.strokeRect(paddleX, c.height-30, 80,10);
+
+  // balls
+  balls.forEach((b,i)=>{
+    ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,2*Math.PI);
+    ctx.fillStyle='#f69'; ctx.fill();
+    ctx.closePath();
+
+    b.x += b.dx; b.y += b.dy;
+    if(b.x< b.r || b.x>c.width-b.r) b.dx*=-1;
+    if(b.y< b.r) b.dy*=-1;
+    else if(b.y > c.height - 30 - b.r && b.x>paddleX && b.x<paddleX+80){
+      b.dy *= -1;
+    } else if(b.y > c.height + b.r){
+      balls.splice(i,1);
+    }
+
+    // collision
+    bricks.flat().forEach(br=>{
+      if(br.status && b.x>br.x && b.x<br.x+bw && b.y>br.y && b.y<br.y+bh){
+        br.status=0; b.dy*=-1; score++; scoreEl.textContent=score;
+        if(score>high){high=score;localStorage.setItem('highAna',high);highEl.textContent=high}
+        if(score%5==0) alert(praises[(score/5 -1)%praises.length]);
+        if(balls.length<20){
+          balls.push({x:b.x,y:b.y,dx:-b.dx,dy:b.dy,r:7});
+        }
+        if(score===total) finalDiv.style.display = 'block';
+      }
+    });
+  });
+
+  if(balls.length==0){
+    balls=[{ x:200, y:550, dx:3, dy:-3, r:7 }];
+    paddleX = 160;
+  }
+
+  requestAnimationFrame(draw);
+}
+
+bg.onload = ()=> draw();
+setTimeout(draw, 1000);
+</script>
+
+</body>
+</html>
