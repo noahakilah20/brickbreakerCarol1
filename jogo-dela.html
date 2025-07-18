@@ -105,23 +105,22 @@ for(let c=0; c<brickColumnCount; c++) {
 }
 
 function drawBricks() {
+  ctx.font = "20px Arial";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
   for(let c=0; c<brickColumnCount; c++) {
     for(let r=0; r<brickRowCount; r++) {
       if(bricks[c][r].status === 1) {
-        let brickX = c*(brickWidth+brickPadding) + brickOffsetLeft;
-        let brickY = r*(brickHeight+brickPadding) + brickOffsetTop;
+        let brickX = c*(brickWidth+brickPadding) + brickOffsetLeft + brickWidth / 2;
+        let brickY = r*(brickHeight+brickPadding) + brickOffsetTop + brickHeight / 2;
         bricks[c][r].x = brickX;
         bricks[c][r].y = brickY;
-        ctx.beginPath();
-        ctx.fillStyle = "#ff1493";
-        ctx.fillRect(brickX, brickY, brickWidth, brickHeight);
-        ctx.strokeStyle = "#a00055";
-        ctx.strokeRect(brickX, brickY, brickWidth, brickHeight);
-        ctx.closePath();
+        ctx.fillText("❤️", brickX, brickY);
       }
     }
   }
 }
+
 
 function drawPaddle() {
   ctx.beginPath();
