@@ -1,124 +1,225 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <title>Jogo da Aninha ❤️</title>
-  <style>
-    body { margin:0; overflow:hidden; font-family:Arial,sans-serif; background:#fff; }
-    #gameCanvas { display:block; margin:0 auto; border:2px solid #000; background:#fff; }
-    #info { position:absolute; top:10px; left:10px; background:rgba(255,255,255,0.8); padding:8px; border-radius:8px; font-weight:bold; }
-    #finalMsg { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); display:none; background:#ffc0cb; padding:20px; border-radius:12px; font-size:24px; font-weight:bold; box-shadow:0 0 10px #f0f; }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Jogo da Aninha</title>
+<style>
+  body {
+    margin: 0;
+    position: relative;
+    font-family: Arial, sans-serif;
+  }
+  #pontuacao {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    font-weight: bold;
+  }
+  canvas {
+    display: block;
+    margin: 50px auto;
+    border: 2px solid black;
+    background: white;
+  }
+  .elogio {
+    position: absolute;
+    color: #ff1493;
+    font-weight: bold;
+    animation: flutuar 4s ease forwards;
+    pointer-events: none;
+    user-select: none;
+  }
+  @keyframes flutuar {
+    0% {opacity: 0; transform: translateY(20px);}
+    50% {opacity: 1; transform: translateY(-20px);}
+    100% {opacity: 0; transform: translateY(-100px);}
+  }
+</style>
 </head>
 <body>
-  <canvas id="gameCanvas" width="400" height="600"></canvas>
-  <div id="info">Pontuação: <span id="score">0</span> | Recorde: <span id="highScore">0</span></div>
-  <div id="finalMsg">❤️ Você é incrível, Aninha! ❤️</div>
+
+<div id="pontuacao">Pontuação: 0 | Recorde: 0</div>
+<canvas id="gameCanvas" width="480" height="640"></canvas>
 
 <script>
-const c = document.getElementById('gameCanvas');
-const ctx = c.getContext('2d');
-const scoreEl = document.getElementById('score');
-const highEl = document.getElementById('highScore');
-const finalDiv = document.getElementById('finalMsg');
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
 
-const bg = new Image();
-bg.src = 'https://harikacocuklarizmir.com/images/uploads/2dc834e1801c5d89034a2b8454d42ce8.jpg';
+let score = 0;
+let highScore = 0;
 
-let balls = [{ x:200, y:550, dx: 3, dy:-3, r:7 }];
-let paddleX = 160, score = 0, high = Number(localStorage.getItem('highAna')||0);
-highEl.textContent = high;
+const pontuacaoEl = document.getElementById("pontuacao");
 
-const layout = [
- '000001111110000',
- '000111111111000',
- '001111111111100',
- '011111111111110',
- '011111111111110',
- '011111111111110',
- '001111111111100',
- '000111111111000',
- '000011111110000',
- '000001111100000',
- '000000111000000',
- '000000010000000'
-];
-const rows = layout.length, cols = layout[0].length;
-const bw=24, bh=20, pad=4, ot=40, ol=8;
-let bricks = [];
-for(let r=0;r<rows;r++){
-  bricks[r]=[];
-  for(let c2=0;c2<cols;c2++){
-    bricks[r][c2]={status: layout[r][c2]=='1'?1:0, x:0, y:0};
+// Paddles
+const paddleWidth = 80;
+const paddleHeight = 15;
+let paddleX = canvas.width / 2 - paddleWidth / 2;
+
+// Bola
+class Ball {
+  constructor(x, y, dx, dy, radius = 8, color = "#ff69b4") {
+    this.x = x;
+    this.y = y;
+    this.dx = dx;
+    this.dy = dy;
+    this.radius = radius;
+    this.color = color;
+  }
+  draw() {
+    ctx.beginPath();
+    ctx.fillStyle = this.color;
+    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.closePath();
+  }
+  move() {
+    this.x += this.dx;
+    this.y += this.dy;
+  }
+  bounceX() {
+    this.dx = -this.dx;
+  }
+  bounceY() {
+    this.dy = -this.dy;
   }
 }
-const total = bricks.flat().filter(b=>b.status).length;
-const praises = ["Você é um encanto!","Linda demais!","Sua luz ilumina!","Você arrasa!","Continue brilhando!"];
 
-c.addEventListener('mousemove', e=>{
-  let mx = e.clientX - c.getBoundingClientRect().left;
-  paddleX = Math.max(0, Math.min(mx-40, c.width-80));
+const balls = [new Ball(canvas.width / 2, canvas.height / 2, 3, -3)];
+
+const bricks = [];
+const brickRowCount = 5;
+const brickColumnCount = 7;
+const brickWidth = 60;
+const brickHeight = 20;
+const brickPadding = 10;
+const brickOffsetTop = 50;
+const brickOffsetLeft = 35;
+
+// Criar bricks
+for(let c=0; c<brickColumnCount; c++) {
+  bricks[c] = [];
+  for(let r=0; r<brickRowCount; r++) {
+    bricks[c][r] = { x: 0, y: 0, status: 1 };
+  }
+}
+
+function drawBricks() {
+  for(let c=0; c<brickColumnCount; c++) {
+    for(let r=0; r<brickRowCount; r++) {
+      if(bricks[c][r].status === 1) {
+        let brickX = c*(brickWidth+brickPadding) + brickOffsetLeft;
+        let brickY = r*(brickHeight+brickPadding) + brickOffsetTop;
+        bricks[c][r].x = brickX;
+        bricks[c][r].y = brickY;
+        ctx.beginPath();
+        ctx.fillStyle = "#ff1493";
+        ctx.fillRect(brickX, brickY, brickWidth, brickHeight);
+        ctx.strokeStyle = "#a00055";
+        ctx.strokeRect(brickX, brickY, brickWidth, brickHeight);
+        ctx.closePath();
+      }
+    }
+  }
+}
+
+function drawPaddle() {
+  ctx.beginPath();
+  ctx.fillStyle = "#6495ED";
+  ctx.fillRect(paddleX, canvas.height - paddleHeight - 10, paddleWidth, paddleHeight);
+  ctx.closePath();
+}
+
+function drawScore() {
+  pontuacaoEl.textContent = `Pontuação: ${score} | Recorde: ${highScore}`;
+}
+
+function collisionDetection() {
+  balls.forEach((ball, ballIndex) => {
+    for(let c=0; c<brickColumnCount; c++) {
+      for(let r=0; r<brickRowCount; r++) {
+        let b = bricks[c][r];
+        if(b.status === 1) {
+          if(ball.x > b.x && ball.x < b.x + brickWidth &&
+             ball.y - ball.radius < b.y + brickHeight &&
+             ball.y + ball.radius > b.y) {
+            ball.bounceY();
+            b.status = 0;
+            score++;
+            if(score > highScore) highScore = score;
+            // Multiplicação de bolas ao bater no tijolo
+            balls.push(new Ball(ball.x, ball.y, -ball.dx, ball.dy, ball.radius, ball.color));
+          }
+        }
+      }
+    }
+  });
+}
+
+function moveBalls() {
+  balls.forEach((ball, index) => {
+    ball.move();
+
+    // Colisão com paredes esquerda e direita
+    if(ball.x + ball.dx > canvas.width - ball.radius || ball.x + ball.dx < ball.radius) {
+      ball.bounceX();
+    }
+    // Colisão com topo
+    if(ball.y + ball.dy < ball.radius) {
+      ball.bounceY();
+    }
+    // Colisão com paddle
+    if(ball.y + ball.radius >= canvas.height - paddleHeight - 10) {
+      if(ball.x > paddleX && ball.x < paddleX + paddleWidth) {
+        ball.bounceY();
+      } else if (ball.y + ball.radius > canvas.height) {
+        // Remove bola que caiu
+        balls.splice(index, 1);
+      }
+    }
+  });
+}
+
+// Efeito elogio flutuante
+function showElogioFinal() {
+  const el = document.createElement("div");
+  el.className = "elogio";
+  el.innerText = "Você arrasou, Aninha! 💖";
+  el.style.left = (canvas.offsetLeft + canvas.width / 2 - 100) + "px";
+  el.style.top = (canvas.offsetTop + canvas.height / 2 - 20) + "px";
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawBricks();
+  drawPaddle();
+  balls.forEach(ball => ball.draw());
+  drawScore();
+  collisionDetection();
+  moveBalls();
+
+  if(balls.length === 0) {
+    showElogioFinal();
+    setTimeout(() => {
+      document.location.reload();
+    }, 4000);
+  } else {
+    requestAnimationFrame(draw);
+  }
+}
+
+// Controle do paddle com mouse
+document.addEventListener("mousemove", (e) => {
+  const rect = canvas.getBoundingClientRect();
+  let mouseX = e.clientX - rect.left;
+  paddleX = mouseX - paddleWidth / 2;
+  if(paddleX < 0) paddleX = 0;
+  if(paddleX > canvas.width - paddleWidth) paddleX = canvas.width - paddleWidth;
 });
 
-function draw(){
-  ctx.clearRect(0,0,c.width,c.height);
-  ctx.drawImage(bg,0,0,c.width,c.height);
-
-  // bricks
-  bricks.flat().forEach(b=>{
-    if(b.status){
-      let r = bricks.indexOf(bricks.find(rw=>rw.includes(b)));
-      let c2 = bricks[r].indexOf(b);
-      b.x = ol + c2*(bw+pad);
-      b.y = ot + r*(bh+pad);
-      ctx.fillStyle='#f69'; ctx.fillRect(b.x,b.y,bw,bh);
-      ctx.fillStyle='#000'; ctx.font='14px Arial'; ctx.fillText('❤️',b.x+8,b.y+14);
-    }
-  });
-
-  // paddle
-  ctx.fillStyle='#87CEFA'; ctx.fillRect(paddleX, c.height-30, 80, 10);
-  ctx.strokeStyle='#000'; ctx.strokeRect(paddleX, c.height-30, 80,10);
-
-  // balls
-  balls.forEach((b,i)=>{
-    ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,2*Math.PI);
-    ctx.fillStyle='#f69'; ctx.fill();
-    ctx.closePath();
-
-    b.x += b.dx; b.y += b.dy;
-    if(b.x< b.r || b.x>c.width-b.r) b.dx*=-1;
-    if(b.y< b.r) b.dy*=-1;
-    else if(b.y > c.height - 30 - b.r && b.x>paddleX && b.x<paddleX+80){
-      b.dy *= -1;
-    } else if(b.y > c.height + b.r){
-      balls.splice(i,1);
-    }
-
-    // collision
-    bricks.flat().forEach(br=>{
-      if(br.status && b.x>br.x && b.x<br.x+bw && b.y>br.y && b.y<br.y+bh){
-        br.status=0; b.dy*=-1; score++; scoreEl.textContent=score;
-        if(score>high){high=score;localStorage.setItem('highAna',high);highEl.textContent=high}
-        if(score%5==0) alert(praises[(score/5 -1)%praises.length]);
-        if(balls.length<20){
-          balls.push({x:b.x,y:b.y,dx:-b.dx,dy:b.dy,r:7});
-        }
-        if(score===total) finalDiv.style.display = 'block';
-      }
-    });
-  });
-
-  if(balls.length==0){
-    balls=[{ x:200, y:550, dx:3, dy:-3, r:7 }];
-    paddleX = 160;
-  }
-
-  requestAnimationFrame(draw);
-}
-
-bg.onload = ()=> draw();
-setTimeout(draw, 1000);
+draw();
 </script>
 
 </body>
